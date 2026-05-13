@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gambar Bareng</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #1a1a2e;
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+    canvas {
+      background: white;
+      border: 3px solid #0f3460;
+      border-radius: 10px;
+      margin: 10px;
+    }
+    input, button {
+      padding: 10px;
+      margin: 5px;
+      font-size: 16px;
+    }
+    button { background: #e94560; color: white; border: none; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>🎨 Gambar Bareng</h1>
+
+  <div id="lobby">
+    <input type="text" id="username" placeholder="Nama kamu" />
+    <br>
+    <button onclick="createRoom()">Buat Room Baru</button>
+    <br><br>
+    <input type="text" id="roomCode" placeholder="Masukkan Kode Room" maxlength="6" />
+    <button onclick="joinRoom()">Join Room</button>
+  </div>
+
+  <div id="game" style="display:none;">
+    <h2>Room: <span id="roomDisplay"></span></h2>
+    <canvas id="canvas" width="800" height="500"></canvas><br>
+    <button onclick="clearCanvas()">🗑️ Clear Canvas</button>
+
+    <div id="chat" style="margin-top:15px; max-height:200px; overflow-y:scroll; background:#16213e; padding:10px; text-align:left;"></div>
+    <input type="text" id="message" placeholder="Ketik tebakan atau chat..." onkeypress="if(event.key==='Enter') sendChat()" />
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
