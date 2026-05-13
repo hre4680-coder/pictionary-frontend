@@ -1,4 +1,5 @@
-const socket = io('http://localhost:3000'); // Ganti nanti jadi Railway
+// Ganti dengan URL Railway kamu
+const socket = io('https://pictionary-backend.up.railway.app');
 
 let currentRoom = null;
 let username = '';
