@@ -10,41 +10,88 @@
       background: #1a1a2e;
       color: white;
       text-align: center;
-      padding: 20px;
+      margin: 0;
+      padding: 10px;
     }
+    h1 { margin: 10px 0 20px; }
+    input, button {
+      padding: 12px;
+      margin: 8px;
+      font-size: 16px;
+      border-radius: 8px;
+    }
+    button {
+      background: #e94560;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover { background: #c13a52; }
+
     canvas {
       background: white;
-      border: 3px solid #0f3460;
-      border-radius: 10px;
-      margin: 10px;
+      border: 4px solid #0f3460;
+      border-radius: 12px;
+      touch-action: none;
     }
-    input, button {
-      padding: 10px;
-      margin: 5px;
-      font-size: 16px;
+
+    .toolbar {
+      margin: 10px auto;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
     }
-    button { background: #e94560; color: white; border: none; cursor: pointer; }
+
+    .color-btn {
+      width: 40px;
+      height: 40px;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <h1>🎨 Gambar Bareng</h1>
 
+  <!-- LOBBY -->
   <div id="lobby">
     <input type="text" id="username" placeholder="Nama kamu" />
     <br>
     <button onclick="createRoom()">Buat Room Baru</button>
     <br><br>
-    <input type="text" id="roomCode" placeholder="Masukkan Kode Room" maxlength="6" />
+    <input type="text" id="roomCode" placeholder="Kode Room (6 karakter)" maxlength="6" style="text-transform:uppercase"/>
     <button onclick="joinRoom()">Join Room</button>
   </div>
 
+  <!-- GAME AREA -->
   <div id="game" style="display:none;">
-    <h2>Room: <span id="roomDisplay"></span></h2>
-    <canvas id="canvas" width="800" height="500"></canvas><br>
-    <button onclick="clearCanvas()">🗑️ Clear Canvas</button>
+    <h2>Room: <span id="roomDisplay" style="color:#ffd700"></span></h2>
+    
+    <canvas id="canvas" width="800" height="500"></canvas>
 
-    <div id="chat" style="margin-top:15px; max-height:200px; overflow-y:scroll; background:#16213e; padding:10px; text-align:left;"></div>
-    <input type="text" id="message" placeholder="Ketik tebakan atau chat..." onkeypress="if(event.key==='Enter') sendChat()" />
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <button onclick="clearCanvas()">🗑️ Clear</button>
+      <button onclick="changeColor('#000000')">Hitam</button>
+      <button onclick="changeColor('#e74c3c')">Merah</button>
+      <button onclick="changeColor('#3498db')">Biru</button>
+      <button onclick="changeColor('#2ecc71')">Hijau</button>
+      <button onclick="changeColor('#f1c40f')">Kuning</button>
+      
+      <select onchange="changeLineWidth(this.value)">
+        <option value="5">Tebal 5</option>
+        <option value="8">Tebal 8</option>
+        <option value="12" selected>Tebal 12</option>
+        <option value="20">Tebal 20</option>
+      </select>
+    </div>
+
+    <div id="chat" style="margin:15px auto; max-width:800px; max-height:180px; overflow-y:scroll; background:#16213e; padding:10px; text-align:left; border-radius:8px;"></div>
+    
+    <input type="text" id="message" placeholder="Ketik tebakan atau chat..." style="width:70%; max-width:600px;" 
+           onkeypress="if(event.key==='Enter') sendChat()">
   </div>
 
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
