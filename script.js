@@ -1,5 +1,5 @@
 // ================== KONFIGURASI UTAMA ==================
-const socket = io('https://zuw2qt2d.up.railway.app', {
+const socket = io('https://pictionary-backend-production.up.railway.app', {
   reconnection: true,
   reconnectionAttempts: 10,
   timeout: 10000,
