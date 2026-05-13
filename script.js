@@ -1,10 +1,11 @@
-// ================== KONEKSI SOCKET ==================
+// ================== KONEKSI ==================
 const socket = io('https://pictionary-backend-production.up.railway.app', {
   reconnection: true,
-  reconnectionAttempts: 10,
+  reconnectionAttempts: 5,
   timeout: 10000
 });
 
+// State
 let currentRoom = null;
 let username = '';
 let isDrawingAllowed = false;
@@ -17,18 +18,20 @@ let currentLineWidth = 8;
 let isEraser = false;
 
 // DOM elements
-let lobbyDiv, gameDiv, startBtn, phaseEl, timerEl, roomCodeSpan, chatContainer;
+let lobbyDiv, gameDiv, startBtn, phaseEl, timerEl, roomCodeSpan, chatDiv;
 
-// ================== INISIALISASI ==================
+// Inisialisasi saat halaman siap
 document.addEventListener('DOMContentLoaded', () => {
   canvas = document.getElementById('drawCanvas');
-  if (!canvas) console.error('Canvas tidak ditemukan!');
-  else {
+  if (canvas) {
     ctx = canvas.getContext('2d');
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.strokeStyle = currentColor;
     ctx.lineWidth = currentLineWidth;
+    setupCanvasEvents();
+  } else {
+    console.error('Canvas tidak ditemukan!');
   }
 
   lobbyDiv = document.getElementById('lobbySection');
@@ -37,50 +40,48 @@ document.addEventListener('DOMContentLoaded', () => {
   phaseEl = document.getElementById('phaseDisplay');
   timerEl = document.getElementById('timerDisplay');
   roomCodeSpan = document.getElementById('roomCodeDisplay');
-  chatContainer = document.getElementById('chatMessages');
+  chatDiv = document.getElementById('chatMessages');
 
-  if (!roomCodeSpan) console.error('Elemen roomCodeDisplay tidak ditemukan!');
-
-  setupCanvasEvents();
-  console.log('✅ UI siap');
+  console.log('✅ DOM siap');
 });
 
-// ================== FUNGSI MENAMPILKAN KODE ROOM (DENGAN FALLBACK) ==================
+// Fungsi tampilkan game UI dengan kode room
 function showGameUI(roomCode) {
   if (!lobbyDiv || !gameDiv) return;
-  lobbyDiv.style.display = 'none';
-  gameDiv.style.display = 'block';
-  
-  // Tampilkan kode room di span (jika ada)
+  lobbyDiv.classList.add('hidden');
+  gameDiv.classList.remove('hidden');
   if (roomCodeSpan) {
-    roomCodeSpan.innerHTML = `🔑 Kode Room: <strong style="color:#FFD966;">${roomCode}</strong>`;
+    roomCodeSpan.innerHTML = `🔑 Kode Room: <strong style="color:#fbbf24;">${roomCode}</strong>`;
   } else {
-    // Fallback: alert jika elemen tidak ditemukan
-    alert(`Room berhasil dibuat! Kode Room: ${roomCode}`);
+    // Fallback kalau elemen tidak ada
+    alert(`✅ Room berhasil! Kode: ${roomCode}\nSimpan kode ini untuk ajak teman.`);
   }
-  
-  // Simpan ke sessionStorage juga sebagai cadangan
-  sessionStorage.setItem('lastRoomCode', roomCode);
+  // Simpan ke localStorage biar bisa dilihat
+  localStorage.setItem('lastRoomCode', roomCode);
 }
 
-// ================== SOCKET EVENT ==================
+// ================== SOCKET EVENTS ==================
 socket.on('connect', () => {
-  console.log('✅ Terhubung ke server');
+  console.log('✅ Socket terhubung ke server');
+});
+
+socket.on('connect_error', (err) => {
+  console.error('❌ Koneksi gagal:', err.message);
+  alert('Gagal terhubung ke server. Periksa koneksi internet atau server backend.');
 });
 
 socket.on('roomCreated', (roomCode) => {
-  console.log('🎉 Room created, kode:', roomCode);
+  console.log('✅ roomCreated event diterima, kode:', roomCode);
   currentRoom = roomCode;
   isHost = true;
   showGameUI(roomCode);
-  
-  if (startBtn) startBtn.style.display = 'flex';
+  if (startBtn) startBtn.style.display = 'inline-block';
   if (phaseEl) phaseEl.textContent = 'Menunggu Host Mulai';
   isDrawingAllowed = false;
 });
 
 socket.on('joinedRoom', (roomCode) => {
-  console.log('✅ Bergabung ke room:', roomCode);
+  console.log('✅ joinedRoom event, kode:', roomCode);
   currentRoom = roomCode;
   isHost = false;
   showGameUI(roomCode);
@@ -90,24 +91,21 @@ socket.on('joinedRoom', (roomCode) => {
 });
 
 socket.on('gameStarted', () => {
+  console.log('🎮 Game started');
   if (phaseEl) phaseEl.textContent = '🎨 WAKTU MENGGAMBAR!';
   isDrawingAllowed = true;
-  addChatSystem('🎉 Lomba dimulai! Silakan menggambar!');
+  addChatMessage('Sistem', 'Lomba dimulai! Mulai menggambar!');
 });
 
-socket.on('timerUpdate', (timeLeft) => {
-  if (timerEl) {
-    timerEl.textContent = timeLeft < 10 ? '0' + timeLeft : timeLeft;
-    if (timeLeft <= 5) timerEl.style.color = '#ff5e6e';
-    else timerEl.style.color = '#FF8A5C';
-  }
+socket.on('timerUpdate', (seconds) => {
+  if (timerEl) timerEl.textContent = seconds < 10 ? '0' + seconds : seconds;
 });
 
 socket.on('phaseChange', (data) => {
   if (data.phase === 'voting') {
     if (phaseEl) phaseEl.textContent = '⭐ WAKTU VOTING!';
     isDrawingAllowed = false;
-    addChatSystem('⏳ Voting dimulai, tidak bisa menggambar!');
+    addChatMessage('Sistem', 'Fase voting, tidak bisa menggambar.');
   } else if (data.phase === 'drawing') {
     if (phaseEl) phaseEl.textContent = '🖌️ WAKTU MENGGAMBAR!';
     isDrawingAllowed = true;
@@ -135,14 +133,13 @@ socket.on('chat', (data) => {
 });
 
 socket.on('error', (msg) => {
-  alert(msg);
-  console.error('Error:', msg);
+  alert('Error: ' + msg);
+  console.error(msg);
 });
 
-// ================== CANVAS DRAWING ==================
+// ================== CANVAS ==================
 function setupCanvasEvents() {
   if (!canvas) return;
-  
   const getPos = (e) => {
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
@@ -171,7 +168,6 @@ function setupCanvasEvents() {
     lastY = pos.y;
     ctx.beginPath();
   };
-
   const draw = (e) => {
     if (!painting || !isDrawingAllowed) return;
     e.preventDefault();
@@ -190,7 +186,6 @@ function setupCanvasEvents() {
     lastX = pos.x;
     lastY = pos.y;
   };
-
   const stop = () => { painting = false; };
 
   canvas.addEventListener('mousedown', start);
@@ -202,7 +197,7 @@ function setupCanvasEvents() {
   canvas.addEventListener('touchend', stop);
 }
 
-// ================== TOOLBAR ==================
+// ================== FUNGSI TOOL & GAME ==================
 function changeColor(color) {
   currentColor = color;
   isEraser = false;
@@ -210,8 +205,7 @@ function changeColor(color) {
 }
 function updateBrushSize(size) {
   currentLineWidth = parseInt(size);
-  const span = document.getElementById('brushSizeValue');
-  if (span) span.innerText = size;
+  document.getElementById('brushSizeValue').innerText = size;
   ctx.lineWidth = currentLineWidth;
   if (isEraser) ctx.strokeStyle = '#ffffff';
   else ctx.strokeStyle = currentColor;
@@ -222,70 +216,48 @@ function setEraser() {
 }
 function clearCanvas() {
   if (!currentRoom) return;
-  if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   socket.emit('clearCanvas', currentRoom);
 }
-
-// ================== GAME CONTROLS ==================
 function createRoom() {
-  const inputName = document.getElementById('username');
-  username = inputName ? inputName.value.trim() : '';
-  if (username === '') username = 'Seniman_' + Math.floor(Math.random() * 1000);
-  console.log('Membuat room dengan username:', username);
+  const nameInput = document.getElementById('username');
+  username = nameInput.value.trim();
+  if (username === '') username = 'Pemain_' + Math.floor(Math.random() * 1000);
+  console.log('createRoom emit, username:', username);
   socket.emit('createRoom', username);
 }
-
 function joinRoom() {
-  const inputName = document.getElementById('username');
-  username = inputName ? inputName.value.trim() : '';
-  if (username === '') username = 'Peserta_' + Math.floor(Math.random() * 1000);
-  const codeInput = document.getElementById('roomCode');
-  const code = codeInput ? codeInput.value.trim().toUpperCase() : '';
+  const nameInput = document.getElementById('username');
+  username = nameInput.value.trim();
+  if (username === '') username = 'Pemain_' + Math.floor(Math.random() * 1000);
+  const code = document.getElementById('roomCode').value.trim().toUpperCase();
   if (!code) return alert('Masukkan kode room!');
-  console.log('Join room', code, username);
+  console.log('joinRoom emit', code, username);
   socket.emit('joinRoom', { roomCode: code, username });
 }
-
 function startGame() {
   if (isHost && currentRoom) {
     socket.emit('startGame', currentRoom);
-    addChatSystem('🏁 Host memulai lomba! Selamat menggambar!');
   } else {
     alert('Hanya host yang bisa memulai lomba!');
   }
 }
-
 function sendChat() {
   const input = document.getElementById('chatInput');
-  if (!input) return;
   const msg = input.value.trim();
   if (msg && currentRoom) {
     socket.emit('chat', { roomCode: currentRoom, username, message: msg });
     input.value = '';
   }
 }
-
-function addChatMessage(user, msg) {
-  if (!chatContainer) return;
+function addChatMessage(sender, msg) {
+  if (!chatDiv) return;
   const div = document.createElement('div');
-  div.innerHTML = `<strong>${escapeHtml(user)}:</strong> ${escapeHtml(msg)}`;
-  chatContainer.appendChild(div);
-  chatContainer.scrollTop = chatContainer.scrollHeight;
+  div.innerHTML = `<strong>${escapeHtml(sender)}:</strong> ${escapeHtml(msg)}`;
+  chatDiv.appendChild(div);
+  chatDiv.scrollTop = chatDiv.scrollHeight;
 }
-
-function addChatSystem(text) {
-  if (!chatContainer) return;
-  const div = document.createElement('div');
-  div.style.textAlign = 'center';
-  div.style.opacity = '0.7';
-  div.style.fontStyle = 'italic';
-  div.innerText = text;
-  chatContainer.appendChild(div);
-  chatContainer.scrollTop = chatContainer.scrollHeight;
-}
-
 function escapeHtml(str) {
-  if (!str) return '';
   return str.replace(/[&<>]/g, function(m) {
     if (m === '&') return '&amp;';
     if (m === '<') return '&lt;';
@@ -293,37 +265,13 @@ function escapeHtml(str) {
     return m;
   });
 }
-
-// ================== PENGATURAN & TEMA ==================
-function openSettings() {
-  const modal = document.getElementById('themeModal');
-  if (modal) modal.style.display = 'flex';
-}
-function closeModal() {
-  const modal = document.getElementById('themeModal');
-  if (modal) modal.style.display = 'none';
-}
-function setTheme(theme) {
-  document.body.className = '';
-  if (theme === 'sunset') document.body.classList.add('theme-sunset');
-  if (theme === 'ocean') document.body.classList.add('theme-ocean');
-  if (theme === 'forest') document.body.classList.add('theme-forest');
-  if (theme === 'retro') document.body.classList.add('theme-retro');
-  closeModal();
-  if (currentRoom) {
-    socket.emit('chat', { roomCode: currentRoom, username: '🎨 Sistem', message: `Tema ruangan diubah menjadi ${theme.toUpperCase()}!` });
-  }
-}
-
-// Ekspos fungsi ke global
-window.updateBrushSize = updateBrushSize;
-window.changeColor = changeColor;
-window.setEraser = setEraser;
-window.clearCanvas = clearCanvas;
+function openSettings() { alert('Pengaturan tema akan segera hadir!'); }
 window.createRoom = createRoom;
 window.joinRoom = joinRoom;
 window.startGame = startGame;
+window.clearCanvas = clearCanvas;
+window.changeColor = changeColor;
+window.updateBrushSize = updateBrushSize;
+window.setEraser = setEraser;
 window.sendChat = sendChat;
 window.openSettings = openSettings;
-window.setTheme = setTheme;
-window.closeModal = closeModal;
