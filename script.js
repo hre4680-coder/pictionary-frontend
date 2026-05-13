@@ -32,17 +32,15 @@ const chatDiv = document.getElementById('chatMessages');
 const playerListDiv = document.getElementById('playerListContainer');
 const playerCountSpan = document.getElementById('playerCount');
 
-// Setting room (hanya host)
-let roomSettings = {
-  duration: 60,
-  maxRounds: 3
-};
+// Setting room
+let roomSettings = { duration: 60, maxRounds: 3 };
 
 // Voting state
 let votingImages = [];
 let currentVoteIndex = 0;
-let myVotes = []; // menyimpan rating untuk setiap gambar (index)
+let myVotes = [];
 let currentRating = 0;
+let autoNextTimer = null;
 
 // ======================== INISIALISASI CANVAS ========================
 document.addEventListener('DOMContentLoaded', () => {
@@ -106,27 +104,23 @@ function setupCanvasEvents() {
 // ======================== UNDO / REDO ========================
 function saveHistoryState() {
   const imageData = canvas.toDataURL();
-  // hapus state setelah index saat ini
   historyStack = historyStack.slice(0, historyIndex + 1);
   historyStack.push(imageData);
   if (historyStack.length > MAX_HISTORY) historyStack.shift();
   historyIndex = historyStack.length - 1;
 }
-
 function undo() {
   if (historyIndex > 0) {
     historyIndex--;
     restoreFromHistory();
   }
 }
-
 function redo() {
   if (historyIndex < historyStack.length - 1) {
     historyIndex++;
     restoreFromHistory();
   }
 }
-
 function restoreFromHistory() {
   const img = new Image();
   img.onload = () => {
@@ -158,14 +152,30 @@ function clearCanvas() {
   saveHistoryState();
 }
 
-// ======================== PILIHAN BACKGROUND ========================
+// ======================== PILIHAN BACKGROUND (MODAL COLOR PICKER) ========================
 function openBgPicker() {
-  const color = prompt('Pilih warna background (hex, contoh: #f0f0f0) atau kosongkan untuk putih', '#ffffff');
-  if (color !== null) {
-    ctx.fillStyle = color;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    saveHistoryState();
-  }
+  const modalHtml = `
+    <div id="bgModal" class="modal">
+      <div class="modal-content">
+        <h3>Pilih Warna Background</h3>
+        <input type="color" id="bgColorPicker" value="#ffffff" style="width:100%; margin:16px 0;">
+        <button onclick="applyBgColor()" class="btn-gold">Terapkan</button>
+        <button onclick="closeBgModal()" class="tool-btn">Batal</button>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+function applyBgColor() {
+  const color = document.getElementById('bgColorPicker').value;
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  saveHistoryState();
+  closeBgModal();
+}
+function closeBgModal() {
+  const modal = document.getElementById('bgModal');
+  if (modal) modal.remove();
 }
 
 // ======================== SETTING ROOM (HOST ONLY) ========================
@@ -174,7 +184,6 @@ function openSettings() {
     alert('Hanya host yang bisa mengatur room!');
     return;
   }
-  // Buat modal sederhana
   const modalHtml = `
     <div id="settingsModal" class="modal">
       <div class="modal-content">
@@ -205,8 +214,7 @@ function saveSettings() {
   roomSettings.duration = parseInt(document.getElementById('setDuration').value);
   roomSettings.maxRounds = parseInt(document.getElementById('setRounds').value);
   closeModal();
-  // Kirim pesan ke chat (opsional)
-  window.sendSystemMessage(`Host mengubah setting: ${roomSettings.duration} dt, ${roomSettings.maxRounds} ronde`);
+  sendSystemMessage(`Host mengubah setting: ${roomSettings.duration} dt, ${roomSettings.maxRounds} ronde`);
 }
 function closeModal() {
   const modal = document.getElementById('settingsModal');
@@ -228,7 +236,6 @@ socket.on('roomCreated', (roomCode) => {
   canDraw = false;
   startBtn.style.display = 'inline-block';
 });
-
 socket.on('joinedRoom', (roomCode) => {
   currentRoom = roomCode;
   isHost = false;
@@ -237,24 +244,20 @@ socket.on('joinedRoom', (roomCode) => {
   canDraw = false;
   startBtn.style.display = 'none';
 });
-
 socket.on('playerList', (players) => {
   playerListDiv.innerHTML = players.map(p => `<span class="player-badge">${escapeHtml(p.username)}</span>`).join('');
   playerCountSpan.textContent = players.length;
 });
-
 socket.on('gameStarted', (data) => {
   phaseEl.textContent = '🎨 MENGGAMBAR!';
   canDraw = true;
   addChatMessage('Sistem', `Mulai menggambar! Durasi ${data.duration} detik, ${data.maxRounds} ronde`);
 });
-
 socket.on('timerUpdate', (seconds) => {
   timerEl.textContent = seconds < 10 ? '0' + seconds : seconds;
   if (seconds <= 5) timerEl.style.color = '#ff5e6e';
   else timerEl.style.color = '#FF8A5C';
 });
-
 socket.on('timeoutDrawing', () => {
   canDraw = false;
   phaseEl.textContent = '⏳ Mengirim gambar...';
@@ -262,7 +265,6 @@ socket.on('timeoutDrawing', () => {
   socket.emit('submitDrawing', { roomCode: currentRoom, imageData });
   addChatMessage('Sistem', 'Waktu habis! Gambar dikirim ke penilai.');
 });
-
 socket.on('votingStart', ({ images }) => {
   phaseEl.textContent = '⭐ VOTING! Beri rating untuk setiap gambar';
   canDraw = false;
@@ -271,13 +273,35 @@ socket.on('votingStart', ({ images }) => {
   myVotes = new Array(images.length).fill(null);
   showVotingCard();
 });
+socket.on('winnerResult', ({ winners }) => {
+  showWinnerModal(winners);
+});
+socket.on('nextRound', ({ round, maxRounds }) => {
+  phaseEl.textContent = `🎨 RONDE ${round} / ${maxRounds}`;
+  canDraw = true;
+  clearCanvas();
+  addChatMessage('Sistem', `Memulai ronde ${round} dari ${maxRounds}`);
+});
+socket.on('gameEnded', ({ winner, allScores }) => {
+  let scoreList = allScores.map(p => `${p.username}: ${p.score} poin`).join('\n');
+  alert(`🏆 GAME SELESAI! Pemenang: ${winner.username}\nSkor akhir:\n${scoreList}`);
+  location.reload();
+});
+socket.on('clearAllCanvas', () => {
+  clearCanvas();
+});
+socket.on('chat', (data) => addChatMessage(data.username, data.message));
+socket.on('error', (msg) => alert(msg));
 
+// ======================== VOTING DENGAN AUTO-NEXT 5 DETIK ========================
 function showVotingCard() {
+  if (autoNextTimer) clearTimeout(autoNextTimer);
   const img = votingImages[currentVoteIndex];
   const modalHtml = `
     <div id="votingOverlay" class="voting-overlay">
       <div class="voting-card">
         <h3>Rating Gambar dari <strong>${escapeHtml(img.username)}</strong></h3>
+        <p id="autoNextInfo" style="font-size:12px; color:#aaa;">⭐ Akan otomatis ke gambar berikutnya dalam 5 detik</p>
         <img src="${img.imageData}" />
         <div class="rating-stars" id="voteStars">
           <i class="far fa-star" data-rate="1"></i>
@@ -295,7 +319,7 @@ function showVotingCard() {
     </div>
   `;
   document.body.insertAdjacentHTML('beforeend', modalHtml);
-  // Attach star rating
+  
   const stars = document.querySelectorAll('#voteStars i');
   stars.forEach(star => {
     star.addEventListener('click', () => {
@@ -305,9 +329,10 @@ function showVotingCard() {
         if (idx < rate) s.className = 'fas fa-star selected';
         else s.className = 'far fa-star';
       });
+      resetAutoNextTimer();
     });
   });
-  // Jika sudah pernah memberi rating, tampilkan
+  
   if (myVotes[currentVoteIndex] !== null) {
     currentRating = myVotes[currentVoteIndex];
     stars.forEach((s, idx) => {
@@ -317,23 +342,69 @@ function showVotingCard() {
   } else {
     currentRating = 0;
   }
+  startAutoNextTimer();
 }
 
+function startAutoNextTimer() {
+  if (autoNextTimer) clearTimeout(autoNextTimer);
+  autoNextTimer = setTimeout(() => {
+    if (document.getElementById('votingOverlay')) {
+      // Simpan rating jika sudah dipilih
+      if (myVotes[currentVoteIndex] === null && currentRating > 0) {
+        myVotes[currentVoteIndex] = currentRating;
+        socket.emit('submitVote', {
+          roomCode: currentRoom,
+          targetPlayerId: votingImages[currentVoteIndex].playerId,
+          rating: currentRating
+        });
+      }
+      if (currentVoteIndex < votingImages.length - 1) {
+        nextVote();
+      } else {
+        document.getElementById('votingOverlay')?.remove();
+        addChatMessage('Sistem', 'Terima kasih! Menunggu hasil...');
+      }
+    }
+  }, 5000);
+}
+function resetAutoNextTimer() {
+  if (autoNextTimer) clearTimeout(autoNextTimer);
+  startAutoNextTimer();
+}
 function prevVote() {
+  if (autoNextTimer) clearTimeout(autoNextTimer);
   if (currentVoteIndex > 0) {
+    if (myVotes[currentVoteIndex] === null && currentRating > 0) {
+      myVotes[currentVoteIndex] = currentRating;
+      socket.emit('submitVote', {
+        roomCode: currentRoom,
+        targetPlayerId: votingImages[currentVoteIndex].playerId,
+        rating: currentRating
+      });
+    }
     document.getElementById('votingOverlay').remove();
     currentVoteIndex--;
     showVotingCard();
   }
 }
 function nextVote() {
+  if (autoNextTimer) clearTimeout(autoNextTimer);
   if (currentVoteIndex < votingImages.length - 1) {
+    if (myVotes[currentVoteIndex] === null && currentRating > 0) {
+      myVotes[currentVoteIndex] = currentRating;
+      socket.emit('submitVote', {
+        roomCode: currentRoom,
+        targetPlayerId: votingImages[currentVoteIndex].playerId,
+        rating: currentRating
+      });
+    }
     document.getElementById('votingOverlay').remove();
     currentVoteIndex++;
     showVotingCard();
   }
 }
 function submitCurrentVote() {
+  if (autoNextTimer) clearTimeout(autoNextTimer);
   if (currentRating === 0) {
     alert('Pilih bintang dulu!');
     return;
@@ -344,21 +415,15 @@ function submitCurrentVote() {
     targetPlayerId: votingImages[currentVoteIndex].playerId,
     rating: currentRating
   });
-  // Jika belum semua, lanjut ke berikutnya
   if (currentVoteIndex < votingImages.length - 1) {
     nextVote();
   } else {
-    // Sudah selesai semua, tutup modal
     document.getElementById('votingOverlay')?.remove();
     addChatMessage('Sistem', 'Terima kasih! Menunggu hasil...');
   }
 }
 
-socket.on('winnerResult', ({ winners }) => {
-  // winners = [{ playerId, username, averageRating, imageData }] array 1-3
-  showWinnerModal(winners);
-});
-
+// ======================== WINNER MODAL ========================
 function showWinnerModal(winners) {
   const podiumHtml = winners.map((w, idx) => {
     let medal = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : '🥉');
@@ -382,31 +447,10 @@ function showWinnerModal(winners) {
   `;
   document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
-
 function continueToNextRound() {
   document.getElementById('winnerModal')?.remove();
   socket.emit('continueToNextRound', currentRoom);
 }
-
-socket.on('nextRound', ({ round, maxRounds }) => {
-  phaseEl.textContent = `🎨 RONDE ${round} / ${maxRounds}`;
-  canDraw = true;
-  clearCanvas();
-  addChatMessage('Sistem', `Memulai ronde ${round} dari ${maxRounds}`);
-});
-
-socket.on('gameEnded', ({ winner, allScores }) => {
-  let scoreList = allScores.map(p => `${p.username}: ${p.score} poin`).join('\n');
-  alert(`🏆 GAME SELESAI! Pemenang: ${winner.username}\nSkor akhir:\n${scoreList}`);
-  location.reload();
-});
-
-socket.on('clearAllCanvas', () => {
-  clearCanvas();
-});
-
-socket.on('chat', (data) => addChatMessage(data.username, data.message));
-socket.on('error', (msg) => alert(msg));
 
 // ======================== FUNGSI UI ========================
 function showGameUI(roomCode) {
@@ -414,14 +458,12 @@ function showGameUI(roomCode) {
   gameDiv.classList.remove('hidden');
   roomCodeSpan.innerHTML = `🔑 Kode: <strong style="color:#fbbf24;">${roomCode}</strong>`;
 }
-
 function addChatMessage(sender, msg) {
   const div = document.createElement('div');
   div.innerHTML = `<strong>${escapeHtml(sender)}:</strong> ${escapeHtml(msg)}`;
   chatDiv.appendChild(div);
   chatDiv.scrollTop = chatDiv.scrollHeight;
 }
-
 function escapeHtml(str) {
   if (!str) return '';
   return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[m]);
@@ -456,7 +498,7 @@ function sendChat() {
   }
 }
 
-// Ekspos fungsi ke global agar bisa dipanggil dari HTML onclick
+// ======================== EKSPOR KE GLOBAL ========================
 window.createRoom = createRoom;
 window.joinRoom = joinRoom;
 window.startGame = startGame;
@@ -468,6 +510,8 @@ window.changeColor = changeColor;
 window.updateBrushSize = updateBrushSize;
 window.setEraser = setEraser;
 window.openBgPicker = openBgPicker;
+window.applyBgColor = applyBgColor;
+window.closeBgModal = closeBgModal;
 window.openSettings = openSettings;
 window.saveSettings = saveSettings;
 window.closeModal = closeModal;
