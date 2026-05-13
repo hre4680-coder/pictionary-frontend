@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>🎨 Lomba Gambar - Arena Kreatif</title>
+  <title>🎨 Lomba Gambar | Rating & Juara</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <style>
     * {
@@ -19,29 +19,22 @@
       background: radial-gradient(circle at 20% 30%, #0B0E1A, #020617);
       min-height: 100vh;
       padding: 12px;
-      transition: background 0.3s ease;
       color: #F0F3FA;
     }
-    /* Tema opsional */
-    body.theme-sunset { background: radial-gradient(circle at 70% 20%, #2c1a2e, #0f0717); }
-    body.theme-ocean { background: radial-gradient(circle at 10% 70%, #0a2f44, #001f2f); }
-    body.theme-forest { background: radial-gradient(circle at 30% 80%, #1a3b2b, #0a1f12); }
-    body.theme-retro { background: radial-gradient(circle at 50% 50%, #3e2a2f, #1e1018); }
     .container {
       max-width: 1400px;
       margin: 0 auto;
     }
-    /* LOBBY CARD */
+    /* Lobby */
     .lobby-card {
-      background: rgba(18, 25, 55, 0.85);
+      background: rgba(18, 25, 55, 0.7);
       backdrop-filter: blur(16px);
       border-radius: 48px;
       padding: 32px 24px;
       max-width: 500px;
-      margin: 40px auto;
+      margin: 60px auto;
       text-align: center;
       border: 1px solid rgba(255, 215, 0, 0.3);
-      box-shadow: 0 25px 40px rgba(0,0,0,0.5);
     }
     .lobby-card h1 {
       font-size: 2.2rem;
@@ -49,138 +42,69 @@
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
-      margin-bottom: 16px;
     }
     .glass-input {
       width: 100%;
-      padding: 14px 18px;
-      background: rgba(10, 14, 30, 0.9);
-      border: 1.5px solid rgba(255, 215, 0, 0.4);
+      padding: 14px;
+      background: #1e293b;
+      border: 1px solid #fbbf24;
       border-radius: 60px;
-      font-size: 1rem;
       color: white;
-      font-family: inherit;
-      outline: none;
-      margin: 8px 0;
-    }
-    .glass-input:focus {
-      border-color: #FFB347;
-      box-shadow: 0 0 10px rgba(255,180,70,0.4);
+      font-size: 1rem;
+      margin: 12px 0;
     }
     .btn-gold {
-      background: linear-gradient(95deg, #FFB347, #FF7E05);
+      background: #fbbf24;
+      color: #0f172a;
+      font-weight: bold;
       border: none;
-      padding: 14px 20px;
+      padding: 12px 20px;
       border-radius: 60px;
-      font-weight: 700;
-      font-size: 1rem;
-      color: #0B0C1A;
-      cursor: pointer;
       width: 100%;
-      font-family: inherit;
-      transition: 0.2s;
       margin-top: 8px;
+      cursor: pointer;
+      font-size: 1rem;
     }
-    .btn-gold:active { transform: scale(0.97); }
-    .btn-outline {
-      background: transparent;
-      border: 1.5px solid #FFB347;
-      color: #FFD966;
-    }
-    /* GAME PANEL */
+    /* Game Panel */
     .game-panel {
-      background: rgba(12, 16, 32, 0.75);
+      background: rgba(12, 16, 32, 0.7);
       backdrop-filter: blur(8px);
       border-radius: 32px;
       padding: 16px;
-      border: 1px solid rgba(255, 200, 100, 0.3);
     }
-    /* Header game */
     .game-header {
       display: flex;
       flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
-      gap: 10px;
-      background: rgba(0,0,0,0.4);
+      background: #02061780;
       padding: 10px 16px;
       border-radius: 60px;
       margin-bottom: 16px;
-      font-size: 0.9rem;
+      gap: 8px;
     }
-    .room-badge {
-      background: #FFB34720;
-      padding: 5px 12px;
+    .room-badge, .phase, .timer {
+      background: #1e293b;
+      padding: 6px 14px;
       border-radius: 40px;
       font-weight: 600;
-      font-size: 0.8rem;
-    }
-    .phase {
-      font-weight: 800;
-      background: #1F2340;
-      padding: 5px 14px;
-      border-radius: 40px;
-      font-size: 0.8rem;
+      font-size: 0.9rem;
     }
     .timer {
       font-family: monospace;
       font-size: 1.8rem;
-      font-weight: 800;
+      background: #00000099;
       color: #FF8A5C;
-      line-height: 1;
     }
-    .header-buttons {
-      display: flex;
-      gap: 8px;
-    }
-    .icon-btn {
-      background: #232842;
-      border: none;
-      padding: 6px 14px;
-      border-radius: 40px;
-      color: #FFE5B4;
-      font-weight: 600;
-      font-size: 0.75rem;
-      cursor: pointer;
-    }
-    /* Player list */
-    .player-list-area {
-      background: rgba(0,0,0,0.3);
-      border-radius: 28px;
-      padding: 10px 14px;
-      margin-bottom: 16px;
-    }
-    .player-list-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 8px;
-    }
-    .player-badge {
-      background: #FFB34720;
-      padding: 4px 12px;
-      border-radius: 40px;
-      font-size: 0.8rem;
-    }
-    /* Canvas & Chat Grid - responsif landscape */
+    /* Layout utama */
     .main-grid {
       display: flex;
-      flex-direction: column;
+      flex-wrap: wrap;
       gap: 16px;
     }
-    @media (min-width: 768px) and (orientation: landscape) {
-      .main-grid {
-        flex-direction: row;
-        align-items: stretch;
-      }
-      .canvas-card {
-        flex: 3;
-      }
-      .chat-card {
-        flex: 1.2;
-      }
-    }
-    .canvas-card {
+    .canvas-area {
+      flex: 2;
+      min-width: 260px;
       background: #0A0D1C;
       border-radius: 28px;
       padding: 12px;
@@ -188,73 +112,51 @@
     .canvas-wrapper {
       background: white;
       border-radius: 24px;
-      overflow: auto;
+      overflow: hidden;
       text-align: center;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
     }
     canvas {
       display: block;
-      margin: 0 auto;
-      background: white;
       width: 100%;
       height: auto;
       cursor: crosshair;
-      touch-action: none; /* penting untuk touch drawing */
+      background: white;
     }
-    /* Ukuran canvas tetap 800x500, tapi tampilan di HP menggunakan lebar penuh */
-    canvas {
-      max-width: 100%;
-      height: auto;
+    /* Ukuran canvas di HP landscape */
+    @media (orientation: landscape) {
+      canvas {
+        max-height: 70vh;
+        width: auto;
+        margin: 0 auto;
+      }
     }
-    /* Toolbar */
     .toolbar {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 10px;
-      margin-top: 14px;
-      background: rgba(26, 30, 55, 0.9);
-      border-radius: 60px;
-      padding: 8px 12px;
+      gap: 8px;
+      margin-top: 12px;
     }
     .tool-btn {
-      background: #1E223E;
+      background: #1e293b;
       border: none;
-      padding: 8px 14px;
-      border-radius: 50px;
-      color: #FFE5B4;
-      font-weight: 500;
-      font-size: 0.8rem;
+      padding: 8px 12px;
+      border-radius: 40px;
+      color: #fbbf24;
       cursor: pointer;
+      font-size: 0.85rem;
     }
-    .color-preview {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: #1A1D3A;
-      padding: 4px 12px;
-      border-radius: 60px;
-    }
-    input[type="color"] {
-      width: 36px;
-      height: 36px;
-      border: 2px solid #FFD966;
-      border-radius: 60px;
-      background: transparent;
-    }
-    /* Chat */
-    .chat-card {
-      background: #0E1022cc;
-      backdrop-filter: blur(8px);
+    .chat-area {
+      flex: 1.2;
+      min-width: 240px;
+      background: #0a0d1ccc;
       border-radius: 28px;
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      min-height: 300px;
     }
     .chat-messages {
-      flex: 1;
-      height: 260px;
+      height: 280px;
       overflow-y: auto;
       padding: 12px;
       display: flex;
@@ -262,148 +164,166 @@
       gap: 6px;
     }
     .chat-messages div {
-      background: #1A1E3A;
-      padding: 8px 12px;
+      background: #1e293b;
+      padding: 6px 12px;
       border-radius: 20px;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       word-break: break-word;
     }
     .chat-input-area {
       display: flex;
       padding: 10px;
       gap: 8px;
-      background: #080B1A;
+      background: #020617;
     }
     .chat-input-area input {
       flex: 1;
-      background: #1E213F;
-      border: none;
-      padding: 10px 14px;
+      padding: 10px;
       border-radius: 40px;
+      border: none;
+      background: #1e293b;
       color: white;
-      font-family: inherit;
     }
-    /* Modal Settings */
+    /* Rating Modal */
     .modal {
       display: none;
       position: fixed;
       top: 0; left: 0;
       width: 100%; height: 100%;
-      background: rgba(0,0,0,0.8);
-      backdrop-filter: blur(5px);
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(10px);
       justify-content: center;
       align-items: center;
       z-index: 1000;
     }
     .modal-content {
-      background: #13172F;
+      background: #0f172a;
       border-radius: 48px;
       padding: 24px;
-      width: 280px;
+      width: 320px;
       text-align: center;
-      border: 1px solid #fbbf24;
+      border: 2px solid #fbbf24;
     }
-    .hidden {
-      display: none;
+    .star-rating {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      font-size: 2.5rem;
+      cursor: pointer;
+      margin: 16px 0;
     }
-    /* Landscape orientation: buat canvas lebih besar */
-    @media (orientation: landscape) and (max-width: 900px) {
-      body {
-        padding: 8px;
-      }
-      .game-panel {
-        padding: 12px;
-      }
-      .canvas-card {
-        padding: 8px;
-      }
-      .toolbar {
-        gap: 6px;
-      }
-      .tool-btn {
-        padding: 6px 10px;
-        font-size: 0.7rem;
-      }
+    .star-rating i {
+      color: #ccc;
+      transition: 0.1s;
     }
-    /* Untuk HP portrait, chat di bawah canvas */
-    @media (max-width: 767px) {
-      .main-grid {
-        flex-direction: column;
-      }
+    .star-rating i.selected {
+      color: #fbbf24;
+    }
+    .rating-comment {
+      width: 100%;
+      padding: 10px;
+      border-radius: 40px;
+      background: #1e293b;
+      border: none;
+      color: white;
+      margin: 12px 0;
+    }
+    .btn-rating {
+      background: #fbbf24;
+      border: none;
+      padding: 10px;
+      border-radius: 40px;
+      font-weight: bold;
+      width: 100%;
+    }
+    /* Floating notification rating */
+    .floating-rating {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #1e293b;
+      border-left: 5px solid #fbbf24;
+      padding: 12px 18px;
+      border-radius: 24px;
+      max-width: 260px;
+      z-index: 1050;
+      animation: fadeOut 5s forwards;
+      box-shadow: 0 4px 12px black;
+    }
+    @keyframes fadeOut {
+      0% { opacity: 1; transform: translateY(0); }
+      70% { opacity: 1; }
+      100% { opacity: 0; visibility: hidden; transform: translateY(10px); }
+    }
+    .hidden { display: none; }
+    /* Player list */
+    .player-list {
+      background: #02061780;
+      border-radius: 28px;
+      padding: 10px;
+      margin-bottom: 16px;
+    }
+    .player-badge {
+      display: inline-block;
+      background: #fbbf2420;
+      padding: 4px 12px;
+      border-radius: 40px;
+      margin: 4px;
+      font-size: 0.8rem;
     }
   </style>
 </head>
 <body>
 <div class="container">
-  <!-- LOBBY SECTION -->
+  <!-- LOBBY -->
   <div id="lobbySection">
     <div class="lobby-card">
-      <h1><i class="fas fa-paintbrush"></i> LOMBA GAMBAR</h1>
-      <p style="margin-bottom: 20px;">Buat room atau gabung dengan kode</p>
-      <div class="input-group">
-        <input type="text" id="username" class="glass-input" placeholder="Nama kamu">
-      </div>
-      <button onclick="createRoom()" class="btn-gold"><i class="fas fa-plus-circle"></i> Buat Room Baru</button>
-      <div style="margin: 20px 0; border-top: 1px solid rgba(255,215,0,0.3);"></div>
-      <div class="input-group">
-        <input type="text" id="roomCode" class="glass-input" placeholder="Kode Room (6 digit)" maxlength="6" style="text-transform:uppercase">
-      </div>
-      <button onclick="joinRoom()" class="btn-gold btn-outline"><i class="fas fa-sign-in-alt"></i> Gabung Room</button>
+      <h1>🎨 LOMBA GAMBAR</h1>
+      <p style="margin: 10px 0;">Buat Room atau Gabung</p>
+      <input type="text" id="username" class="glass-input" placeholder="Nama kamu">
+      <button onclick="createRoom()" class="btn-gold">🚀 Buat Room Baru</button>
+      <div style="margin: 20px 0; border-top: 1px solid #fbbf2433;"></div>
+      <input type="text" id="roomCode" class="glass-input" placeholder="Kode Room" maxlength="6">
+      <button onclick="joinRoom()" class="btn-gold">🔗 Gabung Room</button>
     </div>
   </div>
 
-  <!-- GAME SECTION (awal tersembunyi) -->
+  <!-- GAME SECTION -->
   <div id="gameSection" class="hidden">
     <div class="game-panel">
       <div class="game-header">
         <div class="room-badge" id="roomCodeDisplay">🔑 Room: -</div>
         <div class="phase" id="phaseDisplay">⏳ LOBBY</div>
         <div class="timer" id="timerDisplay">00</div>
-        <div class="header-buttons">
-          <button id="startGameBtn" onclick="startGame()" class="icon-btn" style="display:none;"><i class="fas fa-play"></i> Mulai</button>
-          <button id="settingsRoomBtn" onclick="openSettingsModal()" class="icon-btn" style="display:none;"><i class="fas fa-sliders-h"></i> Setting</button>
-          <button onclick="openThemeModal()" class="icon-btn"><i class="fas fa-palette"></i> Tema</button>
+        <div>
+          <button id="startGameBtn" onclick="startGame()" class="tool-btn" style="display:none;">▶ Mulai</button>
+          <button id="settingsBtn" onclick="openSettings()" class="tool-btn">⚙ Setting</button>
         </div>
       </div>
-
       <!-- Daftar pemain -->
-      <div class="player-list-area">
-        <strong><i class="fas fa-users"></i> Pemain (<span id="playerCount">0</span>)</strong>
-        <div id="playerListContainer" class="player-list-container"></div>
+      <div class="player-list">
+        <strong>👥 Pemain (<span id="playerCount">0</span>)</strong>
+        <div id="playerListContainer"></div>
       </div>
-
       <div class="main-grid">
-        <!-- CANVAS CARD -->
-        <div class="canvas-card">
+        <div class="canvas-area">
           <div class="canvas-wrapper">
             <canvas id="drawCanvas" width="800" height="500"></canvas>
           </div>
           <div class="toolbar">
-            <button onclick="clearCanvas()" class="tool-btn"><i class="fas fa-trash-alt"></i> Bersih</button>
-            <div class="color-preview">
-              <i class="fas fa-palette"></i>
-              <input type="color" id="colorPicker" value="#000000" onchange="changeColor(this.value)">
-            </div>
-            <div style="display: flex; align-items: center; gap: 5px;">
-              <i class="fas fa-pencil-alt"></i>
-              <input type="range" id="brushSlider" min="2" max="50" value="8" oninput="updateBrushSize(this.value)">
-              <span id="brushSizeValue">8</span>
-            </div>
-            <button onclick="setEraser()" class="tool-btn"><i class="fas fa-eraser"></i> Hapus</button>
+            <button onclick="clearCanvas()" class="tool-btn">🗑 Bersih</button>
+            <input type="color" id="colorPicker" value="#000000" onchange="changeColor(this.value)">
+            <input type="range" id="brushSlider" min="2" max="50" value="8" oninput="updateBrushSize(this.value)">
+            <span id="brushSizeValue">8</span>
+            <button onclick="setEraser()" class="tool-btn">🧽 Hapus</button>
           </div>
         </div>
-
-        <!-- CHAT CARD -->
-        <div class="chat-card">
-          <div style="padding: 12px; background:#0A0D1C; font-weight: bold; border-radius: 28px 28px 0 0;">
-            <i class="fas fa-comments"></i> Ruang Chat
-          </div>
-          <div id="chatMessages" class="chat-messages">
-            <div style="text-align:center; opacity:0.6;">💬 Pesan akan muncul...</div>
-          </div>
+        <div class="chat-area">
+          <div style="padding: 10px; font-weight: bold;">💬 Chat</div>
+          <div id="chatMessages" class="chat-messages"></div>
           <div class="chat-input-area">
-            <input type="text" id="chatInput" placeholder="Ketik pesan..." onkeypress="if(event.key==='Enter') sendChat()">
-            <button onclick="sendChat()" class="tool-btn"><i class="fas fa-paper-plane"></i></button>
+            <input type="text" id="chatInput" placeholder="Pesan..." onkeypress="if(event.key==='Enter') sendChat()">
+            <button onclick="sendChat()" class="tool-btn">Kirim</button>
           </div>
         </div>
       </div>
@@ -411,48 +331,31 @@
   </div>
 </div>
 
-<!-- Modal Setting Room (hanya host) -->
-<div id="settingsModal" class="modal">
+<!-- Modal Rating -->
+<div id="ratingModal" class="modal">
   <div class="modal-content">
-    <h3 style="color:#fbbf24;"><i class="fas fa-cog"></i> Pengaturan Room</h3>
-    <label style="display:block; margin-top:16px;">⏱ Durasi Menggambar</label>
-    <select id="settingDuration" style="width:100%; padding:10px; border-radius:40px; background:#1e293b; color:white;">
-      <option value="30">30 detik</option>
-      <option value="60" selected>60 detik</option>
-      <option value="90">90 detik</option>
-      <option value="120">120 detik</option>
-    </select>
-    <label style="display:block; margin-top:12px;">🎯 Jumlah Ronde</label>
-    <select id="settingRounds" style="width:100%; padding:10px; border-radius:40px; background:#1e293b; color:white;">
-      <option value="1">1 ronde</option>
-      <option value="2">2 ronde</option>
-      <option value="3" selected>3 ronde</option>
-      <option value="4">4 ronde</option>
-      <option value="5">5 ronde</option>
-    </select>
-    <label style="display:block; margin-top:12px;">📚 Kategori Kata</label>
-    <select id="settingCategory" style="width:100%; padding:10px; border-radius:40px; background:#1e293b; color:white;">
-      <option value="acak">Acak</option>
-      <option value="binatang">Hewan</option>
-      <option value="benda">Benda</option>
-      <option value="profesi">Profesi</option>
-    </select>
-    <button onclick="saveSettingsAndClose()" class="btn-gold" style="margin-top:20px;">Simpan</button>
+    <h3>⭐ Beri Rating untuk Gambar ⭐</h3>
+    <div class="star-rating" id="starRating">
+      <i class="far fa-star" data-value="1"></i>
+      <i class="far fa-star" data-value="2"></i>
+      <i class="far fa-star" data-value="3"></i>
+      <i class="far fa-star" data-value="4"></i>
+      <i class="far fa-star" data-value="5"></i>
+    </div>
+    <textarea id="ratingComment" class="rating-comment" rows="2" placeholder="Komentar (opsional)"></textarea>
+    <button onclick="submitRating()" class="btn-rating">Kirim Rating</button>
   </div>
 </div>
 
-<!-- Modal Tema -->
-<div id="themeModal" class="modal">
+<!-- Modal Juara -->
+<div id="winnerModal" class="modal">
   <div class="modal-content">
-    <h3>🎨 Pilih Tema Ruangan</h3>
-    <div class="theme-option" style="background:#232842; margin:10px 0; padding:10px; border-radius:60px; cursor:pointer;" onclick="setTheme('sunset')">🌇 Senja & Emas</div>
-    <div class="theme-option" style="background:#232842; margin:10px 0; padding:10px; border-radius:60px; cursor:pointer;" onclick="setTheme('ocean')">🌊 Samudra Biru</div>
-    <div class="theme-option" style="background:#232842; margin:10px 0; padding:10px; border-radius:60px; cursor:pointer;" onclick="setTheme('forest')">🌿 Hutan Hijau</div>
-    <div class="theme-option" style="background:#232842; margin:10px 0; padding:10px; border-radius:60px; cursor:pointer;" onclick="setTheme('retro')">📺 Retro 80an</div>
-    <button onclick="closeModal()" class="btn-gold" style="margin-top:16px;">Tutup</button>
+    <h3>🏆 JUARA RONDE INI 🏆</h3>
+    <div id="winnerInfo"></div>
+    <canvas id="winnerCanvas" width="300" height="200" style="width:100%; background:#fff; border-radius:16px; margin-top:12px;"></canvas>
+    <button onclick="closeWinnerModal()" class="btn-gold" style="margin-top:16px;">Lanjut ke Ronde Berikutnya</button>
   </div>
 </div>
-
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script src="script.js"></script>
 </body>

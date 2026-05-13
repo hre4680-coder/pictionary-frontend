@@ -1,8 +1,7 @@
-// ================== KONEKSI SOCKET ==================
+// ======================== KONEKSI SOCKET ========================
   const socket = io('https://pictionary-backend-production.up.railway.app', {
     reconnection: true,
-    reconnectionAttempts: 10,
-    timeout: 10000
+    reconnectionAttempts: 5
   });
 
   let currentRoom = null;
@@ -16,9 +15,10 @@
   let currentLineWidth = 8;
   let isEraser = false;
   let roomSettings = { roundDuration: 60, maxRounds: 3, category: 'acak' };
+  let currentRound = 1;
 
   // DOM elements
-  let lobbyDiv, gameDiv, startBtn, settingsRoomBtn, phaseEl, timerEl, roomCodeSpan, chatContainer, playerListContainer, playerCountSpan;
+  let lobbyDiv, gameDiv, startBtn, phaseEl, timerEl, roomCodeSpan, chatDiv, playerListContainer, playerCountSpan;
 
   document.addEventListener('DOMContentLoaded', () => {
     canvas = document.getElementById('drawCanvas');
@@ -33,68 +33,48 @@
     lobbyDiv = document.getElementById('lobbySection');
     gameDiv = document.getElementById('gameSection');
     startBtn = document.getElementById('startGameBtn');
-    settingsRoomBtn = document.getElementById('settingsRoomBtn');
     phaseEl = document.getElementById('phaseDisplay');
     timerEl = document.getElementById('timerDisplay');
     roomCodeSpan = document.getElementById('roomCodeDisplay');
-    chatContainer = document.getElementById('chatMessages');
+    chatDiv = document.getElementById('chatMessages');
     playerListContainer = document.getElementById('playerListContainer');
     playerCountSpan = document.getElementById('playerCount');
-    console.log('✅ UI siap');
+
+    setupStarRating();
   });
 
-  // Helper
+  function setupStarRating() {
+    const stars = document.querySelectorAll('#starRating i');
+    stars.forEach(star => {
+      star.addEventListener('click', () => {
+        const val = parseInt(star.dataset.value);
+        stars.forEach((s, idx) => {
+          if (idx < val) s.className = 'fas fa-star selected';
+          else s.className = 'far fa-star';
+        });
+      });
+    });
+  }
+
+  function getSelectedRating() {
+    const selected = document.querySelectorAll('#starRating i.fas');
+    return selected.length;
+  }
+
   function showGameUI(roomCode) {
     lobbyDiv.classList.add('hidden');
     gameDiv.classList.remove('hidden');
     roomCodeSpan.innerHTML = `🔑 Kode: <strong style="color:#fbbf24;">${roomCode}</strong>`;
     if (isHost) {
-      startBtn.style.display = 'inline-flex';
-      settingsRoomBtn.style.display = 'inline-flex';
+      startBtn.style.display = 'inline-block';
     } else {
       startBtn.style.display = 'none';
-      settingsRoomBtn.style.display = 'none';
     }
   }
 
-  function updatePlayerList(players) {
-    if (!playerListContainer) return;
-    playerListContainer.innerHTML = players.map(p => `<span class="player-badge">${escapeHtml(p.username)}</span>`).join('');
-    if (playerCountSpan) playerCountSpan.textContent = players.length;
-  }
-
-  function addChatMessage(sender, msg) {
-    if (!chatContainer) return;
-    const div = document.createElement('div');
-    div.innerHTML = `<strong>${escapeHtml(sender)}:</strong> ${escapeHtml(msg)}`;
-    chatContainer.appendChild(div);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-  }
-
-  function addSystemMessage(msg) {
-    if (!chatContainer) return;
-    const div = document.createElement('div');
-    div.style.textAlign = 'center';
-    div.style.opacity = '0.7';
-    div.style.fontStyle = 'italic';
-    div.innerText = msg;
-    chatContainer.appendChild(div);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-  }
-
-  function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/[&<>]/g, function(m) {
-      if (m === '&') return '&amp;';
-      if (m === '<') return '&lt;';
-      if (m === '>') return '&gt;';
-      return m;
-    });
-  }
-
-  // ================== SOCKET EVENTS ==================
+  // Socket Events
   socket.on('connect', () => console.log('✅ Terhubung ke server'));
-  socket.on('connect_error', (err) => alert('Gagal koneksi ke server: ' + err.message));
+  socket.on('connect_error', (err) => alert('Koneksi gagal: ' + err.message));
 
   socket.on('roomCreated', (roomCode) => {
     currentRoom = roomCode;
@@ -102,7 +82,6 @@
     showGameUI(roomCode);
     phaseEl.textContent = 'Menunggu Host Mulai';
     isDrawingAllowed = false;
-    addSystemMessage(`Room ${roomCode} berhasil dibuat. Anda adalah host.`);
   });
 
   socket.on('joinedRoom', (roomCode) => {
@@ -111,35 +90,64 @@
     showGameUI(roomCode);
     phaseEl.textContent = 'Menunggu dimulai...';
     isDrawingAllowed = false;
-    addSystemMessage(`Bergabung ke room ${roomCode}`);
   });
 
   socket.on('playerList', (players) => {
-    updatePlayerList(players);
+    playerListContainer.innerHTML = players.map(p => `<span class="player-badge">${escapeHtml(p.username)}</span>`).join('');
+    playerCountSpan.textContent = players.length;
   });
 
   socket.on('gameStarted', (data) => {
-    if (data && data.settings) {
-      roomSettings = data.settings;
-    }
+    if (data && data.settings) roomSettings = data.settings;
     phaseEl.textContent = '🎨 WAKTU MENGGAMBAR!';
     isDrawingAllowed = true;
-    addSystemMessage(`Lomba dimulai! Durasi ${roomSettings.roundDuration}dt, ${roomSettings.maxRounds} ronde. Selamat menggambar!`);
+    addChatMessage('Sistem', `Lomba dimulai! Durasi ${roomSettings.roundDuration} dt, Ronde ${roomSettings.maxRounds}`);
   });
 
   socket.on('timerUpdate', (seconds) => {
     timerEl.textContent = seconds < 10 ? '0' + seconds : seconds;
+    if (seconds <= 5) timerEl.style.color = '#ff5e6e';
   });
 
   socket.on('phaseChange', (data) => {
     if (data.phase === 'voting') {
-      phaseEl.textContent = '⭐ WAKTU VOTING!';
+      phaseEl.textContent = '⭐ VOTING! Beri Rating';
       isDrawingAllowed = false;
-      addSystemMessage('Fase voting, tidak bisa menggambar.');
+      // Tampilkan modal rating untuk semua player
+      if (data.showRatingModal) {
+        document.getElementById('ratingModal').style.display = 'flex';
+      }
     } else if (data.phase === 'drawing') {
       phaseEl.textContent = '🖌️ WAKTU MENGGAMBAR!';
       isDrawingAllowed = true;
     }
+  });
+
+  socket.on('timeoutNotification', (msg) => {
+    showFloatingMessage(msg, 3000);
+  });
+
+  socket.on('showRatingReminder', () => {
+    document.getElementById('ratingModal').style.display = 'flex';
+  });
+
+  socket.on('ratingResult', (data) => {
+    // data: { winnerUsername, winnerImageData, averageStar, comments[] }
+    showWinnerModal(data);
+  });
+
+  socket.on('nextRound', (round) => {
+    currentRound = round;
+    addChatMessage('Sistem', `Mulai Ronde ${round} / ${roomSettings.maxRounds}`);
+    phaseEl.textContent = '🖌️ WAKTU MENGGAMBAR!';
+    isDrawingAllowed = true;
+    document.getElementById('ratingModal').style.display = 'none';
+  });
+
+  socket.on('gameEnded', (finalWinner) => {
+    alert(`🏆 GAME SELESAI! Pemenang Umum: ${finalWinner.username} dengan skor ${finalWinner.score}`);
+    // reload page atau kembali lobby
+    location.reload();
   });
 
   socket.on('drawing', (data) => {
@@ -154,33 +162,21 @@
     ctx.restore();
   });
 
-  socket.on('clearCanvas', () => {
-    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-  });
-
-  socket.on('chat', (data) => {
-    addChatMessage(data.username, data.message);
-  });
-
+  socket.on('clearCanvas', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
+  socket.on('chat', (data) => addChatMessage(data.username, data.message));
   socket.on('error', (msg) => alert(msg));
 
-  // ================== CANVAS DRAWING (support touch) ==================
+  // ========== CANVAS DRAWING ==========
   function setupCanvasEvents() {
-    if (!canvas) return;
     const getPos = (e) => {
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
-      let clientX, clientY;
-      if (e.touches) {
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
-      } else {
-        clientX = e.clientX;
-        clientY = e.clientY;
-      }
-      let x = (clientX - rect.left) * scaleX;
-      let y = (clientY - rect.top) * scaleY;
+      let cx, cy;
+      if (e.touches) { cx = e.touches[0].clientX; cy = e.touches[0].clientY; }
+      else { cx = e.clientX; cy = e.clientY; }
+      let x = (cx - rect.left) * scaleX;
+      let y = (cy - rect.top) * scaleY;
       x = Math.min(Math.max(0, x), canvas.width);
       y = Math.min(Math.max(0, y), canvas.height);
       return { x, y };
@@ -190,8 +186,7 @@
       e.preventDefault();
       painting = true;
       const pos = getPos(e);
-      lastX = pos.x;
-      lastY = pos.y;
+      lastX = pos.x; lastY = pos.y;
       ctx.beginPath();
     };
     const draw = (e) => {
@@ -209,110 +204,102 @@
         color: isEraser ? '#ffffff' : currentColor,
         lineWidth: currentLineWidth
       });
-      lastX = pos.x;
-      lastY = pos.y;
+      lastX = pos.x; lastY = pos.y;
     };
-    const stop = () => { painting = false; };
+    const stop = () => painting = false;
     canvas.addEventListener('mousedown', start);
     canvas.addEventListener('mousemove', draw);
     canvas.addEventListener('mouseup', stop);
     canvas.addEventListener('mouseleave', stop);
-    canvas.addEventListener('touchstart', start, { passive: false });
-    canvas.addEventListener('touchmove', draw, { passive: false });
+    canvas.addEventListener('touchstart', start);
+    canvas.addEventListener('touchmove', draw);
     canvas.addEventListener('touchend', stop);
   }
 
-  // ================== TOOLBAR ==================
-  function changeColor(color) {
-    currentColor = color;
-    isEraser = false;
-    ctx.strokeStyle = color;
-  }
-  function updateBrushSize(size) {
-    currentLineWidth = parseInt(size);
-    document.getElementById('brushSizeValue').innerText = size;
-    ctx.lineWidth = currentLineWidth;
-    if (isEraser) ctx.strokeStyle = '#ffffff';
-    else ctx.strokeStyle = currentColor;
-  }
-  function setEraser() {
-    isEraser = true;
-    ctx.strokeStyle = '#ffffff';
-  }
-  function clearCanvas() {
-    if (!currentRoom) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    socket.emit('clearCanvas', currentRoom);
-  }
+  // ========== FUNGSI TOOL ==========
+  function changeColor(color) { currentColor = color; isEraser = false; ctx.strokeStyle = color; }
+  function updateBrushSize(size) { currentLineWidth = parseInt(size); document.getElementById('brushSizeValue').innerText = size; ctx.lineWidth = currentLineWidth; if(isEraser) ctx.strokeStyle='#ffffff'; else ctx.strokeStyle=currentColor; }
+  function setEraser() { isEraser = true; ctx.strokeStyle = '#ffffff'; }
+  function clearCanvas() { if(!currentRoom) return; ctx.clearRect(0,0,canvas.width,canvas.height); socket.emit('clearCanvas', currentRoom); }
 
-  // ================== GAME ACTIONS ==================
+  // ========== GAME CONTROLS ==========
   function createRoom() {
-    const nameInput = document.getElementById('username');
-    username = nameInput.value.trim();
-    if (username === '') username = 'Seniman_' + Math.floor(Math.random() * 1000);
+    const inp = document.getElementById('username');
+    username = inp.value.trim() || 'Pemain_' + Math.floor(Math.random()*1000);
     socket.emit('createRoom', username);
   }
   function joinRoom() {
-    const nameInput = document.getElementById('username');
-    username = nameInput.value.trim();
-    if (username === '') username = 'Peserta_' + Math.floor(Math.random() * 1000);
+    const inpName = document.getElementById('username');
+    username = inpName.value.trim() || 'Pemain_' + Math.floor(Math.random()*1000);
     const code = document.getElementById('roomCode').value.trim().toUpperCase();
-    if (!code) return alert('Masukkan kode room!');
+    if(!code) return alert('Masukkan kode room');
     socket.emit('joinRoom', { roomCode: code, username });
   }
   function startGame() {
-    if (isHost && currentRoom) {
+    if(isHost && currentRoom) {
       socket.emit('startGame', currentRoom, roomSettings);
-    } else {
-      alert('Hanya host yang bisa memulai lomba!');
-    }
+    } else alert('Hanya host yang bisa memulai');
   }
   function sendChat() {
     const input = document.getElementById('chatInput');
     const msg = input.value.trim();
-    if (msg && currentRoom) {
+    if(msg && currentRoom) {
       socket.emit('chat', { roomCode: currentRoom, username, message: msg });
       input.value = '';
     }
   }
-
-  // ================== SETTINGS & THEME ==================
-  function openSettingsModal() {
-    if (!isHost) { alert('Hanya host dapat mengatur room'); return; }
-    document.getElementById('settingsModal').style.display = 'flex';
-    document.getElementById('settingDuration').value = roomSettings.roundDuration;
-    document.getElementById('settingRounds').value = roomSettings.maxRounds;
-    document.getElementById('settingCategory').value = roomSettings.category;
+  function addChatMessage(sender, msg) {
+    const div = document.createElement('div');
+    div.innerHTML = `<strong>${escapeHtml(sender)}:</strong> ${escapeHtml(msg)}`;
+    chatDiv.appendChild(div);
+    chatDiv.scrollTop = chatDiv.scrollHeight;
   }
-  function saveSettingsAndClose() {
-    roomSettings = {
-      roundDuration: parseInt(document.getElementById('settingDuration').value),
-      maxRounds: parseInt(document.getElementById('settingRounds').value),
-      category: document.getElementById('settingCategory').value
+  function showFloatingMessage(text, duration=5000) {
+    const div = document.createElement('div');
+    div.className = 'floating-rating';
+    div.innerText = text;
+    document.body.appendChild(div);
+    setTimeout(() => div.remove(), duration);
+  }
+  function submitRating() {
+    const rating = getSelectedRating();
+    if(rating === 0) return alert('Pilih bintang dulu!');
+    const comment = document.getElementById('ratingComment').value;
+    // ambil snapshot canvas saat ini (gambar yang dinilai)
+    const imageData = canvas.toDataURL();
+    socket.emit('submitRating', {
+      roomCode: currentRoom,
+      rating,
+      comment,
+      imageData
+    });
+    document.getElementById('ratingModal').style.display = 'none';
+    document.getElementById('ratingComment').value = '';
+    showFloatingMessage('⭐ Terima kasih sudah memberi rating!', 2000);
+  }
+  function showWinnerModal(data) {
+    const winnerDiv = document.getElementById('winnerInfo');
+    winnerDiv.innerHTML = `<h2>${escapeHtml(data.winnerUsername)}</h2><p>⭐ Rata-rata: ${data.averageStar} bintang</p><p>Komentar: ${escapeHtml(data.comments.join(', '))}</p>`;
+    const winnerCanvas = document.getElementById('winnerCanvas');
+    const wCtx = winnerCanvas.getContext('2d');
+    const img = new Image();
+    img.onload = () => {
+      winnerCanvas.width = img.width;
+      winnerCanvas.height = img.height;
+      wCtx.drawImage(img, 0, 0, winnerCanvas.width, winnerCanvas.height);
     };
-    document.getElementById('settingsModal').style.display = 'none';
-    addSystemMessage(`Host mengubah setting: durasi ${roomSettings.roundDuration}dt, ${roomSettings.maxRounds} ronde, kategori ${roomSettings.category}`);
+    img.src = data.winnerImageData;
+    document.getElementById('winnerModal').style.display = 'flex';
   }
-  function openThemeModal() {
-    document.getElementById('themeModal').style.display = 'flex';
+  function closeWinnerModal() {
+    document.getElementById('winnerModal').style.display = 'none';
+    socket.emit('continueToNextRound', currentRoom);
   }
-  function closeModal() {
-    document.getElementById('settingsModal').style.display = 'none';
-    document.getElementById('themeModal').style.display = 'none';
+  function openSettings() {
+    alert("Pengaturan: Durasi, Ronde (dapat ditambahkan nanti)");
   }
-  function setTheme(theme) {
-    document.body.className = '';
-    if (theme === 'sunset') document.body.classList.add('theme-sunset');
-    if (theme === 'ocean') document.body.classList.add('theme-ocean');
-    if (theme === 'forest') document.body.classList.add('theme-forest');
-    if (theme === 'retro') document.body.classList.add('theme-retro');
-    closeModal();
-    if (currentRoom) {
-      socket.emit('chat', { roomCode: currentRoom, username: '🎨 Sistem', message: `Tema diubah menjadi ${theme.toUpperCase()}!` });
-    }
-  }
+  function escapeHtml(str) { return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]); }
 
-  // Global exports
   window.createRoom = createRoom;
   window.joinRoom = joinRoom;
   window.startGame = startGame;
@@ -321,8 +308,6 @@
   window.updateBrushSize = updateBrushSize;
   window.setEraser = setEraser;
   window.sendChat = sendChat;
-  window.openSettingsModal = openSettingsModal;
-  window.saveSettingsAndClose = saveSettingsAndClose;
-  window.openThemeModal = openThemeModal;
-  window.setTheme = setTheme;
-  window.closeModal = closeModal;
+  window.submitRating = submitRating;
+  window.closeWinnerModal = closeWinnerModal;
+  window.openSettings = openSettings;
